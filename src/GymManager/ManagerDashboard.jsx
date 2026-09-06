@@ -19,6 +19,7 @@ function ManagerDashboard() {
   const [membersList, setMembersList] = useState([]);
   const [trainersList, setTrainersList] = useState([]);
   const [activityLogs, setActivityLogs] = useState([]);
+  const [plansList, setPlansList] = useState([]);
 
   const [showAddEqModal, setShowAddEqModal] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -27,6 +28,7 @@ function ManagerDashboard() {
   });
 
   const [assignForm, setAssignForm] = useState({ memberId: "", trainerId: "" });
+  const [assignPlanForm, setAssignPlanForm] = useState({ memberId: "", planId: "" });
 
   const [showAddTrainerModal, setShowAddTrainerModal] = useState(false);
   const [trainerForm, setTrainerForm] = useState({
@@ -50,14 +52,16 @@ function ManagerDashboard() {
 
   const fetchMembersAndTrainers = async () => {
     try {
-      const [memRes, trRes, logRes] = await Promise.all([
+      const [memRes, trRes, logRes, planRes] = await Promise.all([
         axios.get(`${API_BASE}/admin-role/member/all`, { params: { limit: 100 } }),
         axios.get(`${API_BASE}/admin-role/trainer/all`, { params: { limit: 100 } }),
         axios.get(`${API_BASE}/manager/activity-logs`, { params: { limit: 20 } }),
+        axios.get(`${API_BASE}/admin-role/membership-plan/all`, { params: { limit: 100 } }),
       ]);
       setMembersList(memRes.data?.members || []);
       setTrainersList(trRes.data?.trainers || []);
       setActivityLogs(logRes.data?.logs || []);
+      setPlansList(planRes.data?.plans || []);
     } catch (err) {
       console.error("Error fetching members/trainers:", err);
     }
@@ -118,6 +122,18 @@ function ManagerDashboard() {
       fetchMembersAndTrainers();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to assign trainer");
+    }
+  };
+
+  const handleAssignPlanSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.patch(`${API_BASE}/admin-role/membership-plan/assign`, assignPlanForm);
+      alert("Membership plan assigned to member successfully!");
+      setAssignPlanForm({ memberId: "", planId: "" });
+      fetchMembersAndTrainers();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to assign membership plan");
     }
   };
 
@@ -420,6 +436,49 @@ function ManagerDashboard() {
 
               <button type="submit" className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-xs transition-colors cursor-pointer border-none shadow-md shadow-blue-600/30">
                 Assign Trainer Now
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-slate-800/90 p-6 rounded-2xl border border-slate-700/80">
+            <h3 className="text-sm font-bold text-white m-0 mb-4">💳 Assign Membership Plan to Member</h3>
+            <form onSubmit={handleAssignPlanSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Select Gym Member *</label>
+                <select
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  required
+                  value={assignPlanForm.memberId}
+                  onChange={(e) => setAssignPlanForm({ ...assignPlanForm, memberId: e.target.value })}
+                >
+                  <option value="">-- Choose Member --</option>
+                  {membersList.map((m) => (
+                    <option key={m._id} value={m._id}>
+                      {m.name} ({m.email}) {m.membershipPlanId ? ` - [Current Plan: ${m.membershipPlanId.planName || "Assigned"}]` : " - [No Plan Assigned]"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Select Membership Plan *</label>
+                <select
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  required
+                  value={assignPlanForm.planId}
+                  onChange={(e) => setAssignPlanForm({ ...assignPlanForm, planId: e.target.value })}
+                >
+                  <option value="">-- Choose Membership Plan --</option>
+                  {plansList.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.planName} (₹{p.price} / {p.durationMonths} Mo)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button type="submit" className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold text-xs transition-colors cursor-pointer border-none shadow-md shadow-emerald-600/30">
+                Assign Membership Plan
               </button>
             </form>
           </div>
